@@ -25,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", async (req, res) => {
     try {
       const openaiTest = process.env.OPENAI_API_KEY ? true : false;
-      const shopifyTest = process.env.SHOPIFY_SHOP_URL && process.env.SHOPIFY_ACCESS_TOKEN ? 
+      const shopifyTest = shopifyService.isServiceConfigured() ? 
         await shopifyService.testConnection() : false;
       
       res.json({
