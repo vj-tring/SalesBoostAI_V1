@@ -1,6 +1,12 @@
-import axios, { AxiosInstance } from 'axios';
-import type { Product, Order, InsertProduct, InsertOrder } from '@shared/schema';
-
+import axios, { AxiosInstance } from "axios";
+import type {
+  Product,
+  Order,
+  InsertProduct,
+  InsertOrder,
+} from "@shared/schema";
+import dotenv from "dotenv";
+dotenv.config();
 interface ShopifyProduct {
   id: number;
   title: string;
@@ -55,38 +61,44 @@ export class ShopifyService {
   private isConfigured: boolean = false;
 
   constructor() {
-    this.shopUrl = process.env.SHOPIFY_SHOP_URL || process.env.SHOPIFY_URL || '';
-    const accessToken = process.env.SHOPIFY_ACCESS_TOKEN || process.env.SHOPIFY_TOKEN || '';
+    this.shopUrl =
+      process.env.SHOPIFY_SHOP_URL || process.env.SHOPIFY_URL || "";
+    const accessToken =
+      process.env.SHOPIFY_ACCESS_TOKEN || process.env.SHOPIFY_TOKEN || "";
 
     if (this.shopUrl && accessToken) {
       this.client = axios.create({
         baseURL: `https://${this.shopUrl}/admin/api/2024-01`,
         headers: {
-          'X-Shopify-Access-Token': accessToken,
-          'Content-Type': 'application/json',
+          "X-Shopify-Access-Token": accessToken,
+          "Content-Type": "application/json",
         },
         timeout: 30000,
       });
       this.isConfigured = true;
-      console.log('Shopify service configured successfully');
+      console.log("Shopify service configured successfully");
     } else {
-      console.log('Shopify service not configured - missing credentials. Some features will be disabled.');
+      console.log(
+        "Shopify service not configured - missing credentials. Some features will be disabled."
+      );
     }
   }
 
   private checkConfiguration(): void {
     if (!this.isConfigured || !this.client) {
-      throw new Error('Shopify service not configured. Please provide SHOPIFY_SHOP_URL and SHOPIFY_ACCESS_TOKEN');
+      throw new Error(
+        "Shopify service not configured. Please provide SHOPIFY_SHOP_URL and SHOPIFY_ACCESS_TOKEN"
+      );
     }
   }
 
   async syncProducts(): Promise<Product[]> {
     try {
       this.checkConfiguration();
-      const response = await this.client!.get('/products.json?limit=250');
+      const response = await this.client!.get("/products.json?limit=250");
       const shopifyProducts: ShopifyProduct[] = response.data.products;
 
-      const products: InsertProduct[] = shopifyProducts.map(product => {
+      const products: InsertProduct[] = shopifyProducts.map((product) => {
         const mainVariant = product.variants[0];
         const mainImage = product.images[0];
 
@@ -94,22 +106,25 @@ export class ShopifyService {
           shopifyId: product.id.toString(),
           title: product.title,
           description: this.stripHtml(product.body_html),
-          price: mainVariant?.price || '0',
+          price: mainVariant?.price || "0",
           compareAtPrice: mainVariant?.compare_at_price || null,
-          category: product.product_type || 'General',
-          tags: product.tags ? product.tags.split(',').map(tag => tag.trim()) : [],
+          category: product.product_type || "General",
+          tags: product.tags
+            ? product.tags.split(",").map((tag) => tag.trim())
+            : [],
           inventory: mainVariant?.inventory_quantity || 0,
           imageUrl: mainImage?.src || null,
-          isActive: product.status === 'active',
+          isActive: product.status === "active",
         };
       });
 
       console.log(`Synced ${products.length} products from Shopify`);
       return products as Product[];
-
     } catch (error) {
-      console.error('Shopify product sync failed:', error);
-      throw new Error('Failed to sync products from Shopify: ' + (error as Error).message);
+      console.error("Shopify product sync failed:", error);
+      throw new Error(
+        "Failed to sync products from Shopify: " + (error as Error).message
+      );
     }
   }
 
@@ -138,7 +153,9 @@ export class ShopifyService {
   async getCustomerOrders(customerId: string): Promise<ShopifyOrder[]> {
     try {
       this.checkConfiguration();
-      const response = await this.client!.get(`/customers/${customerId}/orders.json`);
+      const response = await this.client!.get(
+        `/customers/${customerId}/orders.json`
+      );
       return response.data.orders;
     } catch (error) {
       console.error(`Failed to get customer orders for ${customerId}:`, error);
@@ -153,43 +170,53 @@ export class ShopifyService {
   }): Promise<ShopifyOrder | null> {
     try {
       this.checkConfiguration();
-      const response = await this.client!.post('/orders.json', {
-        order: orderData
+      const response = await this.client!.post("/orders.json", {
+        order: orderData,
       });
       return response.data.order;
     } catch (error) {
-      console.error('Failed to create Shopify order:', error);
-      throw new Error('Failed to create order in Shopify: ' + (error as Error).message);
+      console.error("Failed to create Shopify order:", error);
+      throw new Error(
+        "Failed to create order in Shopify: " + (error as Error).message
+      );
     }
   }
 
-  async getInventoryLevel(productId: string, variantId?: string): Promise<number> {
+  async getInventoryLevel(
+    productId: string,
+    variantId?: string
+  ): Promise<number> {
     try {
       this.checkConfiguration();
-      const endpoint = variantId 
+      const endpoint = variantId
         ? `/variants/${variantId}.json`
         : `/products/${productId}.json`;
-      
+
       const response = await this.client!.get(endpoint);
-      
+
       if (variantId) {
         return response.data.variant.inventory_quantity || 0;
       } else {
         return response.data.product.variants[0]?.inventory_quantity || 0;
       }
     } catch (error) {
-      console.error('Failed to get inventory level:', error);
+      console.error("Failed to get inventory level:", error);
       return 0;
     }
   }
 
-  async searchProducts(query: string, limit: number = 20): Promise<ShopifyProduct[]> {
+  async searchProducts(
+    query: string,
+    limit: number = 20
+  ): Promise<ShopifyProduct[]> {
     try {
       this.checkConfiguration();
-      const response = await this.client!.get(`/products.json?title=${encodeURIComponent(query)}&limit=${limit}`);
+      const response = await this.client!.get(
+        `/products.json?title=${encodeURIComponent(query)}&limit=${limit}`
+      );
       return response.data.products;
     } catch (error) {
-      console.error('Product search failed:', error);
+      console.error("Product search failed:", error);
       return [];
     }
   }
@@ -197,10 +224,12 @@ export class ShopifyService {
   async getRecentOrders(limit: number = 50): Promise<ShopifyOrder[]> {
     try {
       this.checkConfiguration();
-      const response = await this.client!.get(`/orders.json?limit=${limit}&status=any`);
+      const response = await this.client!.get(
+        `/orders.json?limit=${limit}&status=any`
+      );
       return response.data.orders;
     } catch (error) {
-      console.error('Failed to get recent orders:', error);
+      console.error("Failed to get recent orders:", error);
       return [];
     }
   }
@@ -208,7 +237,9 @@ export class ShopifyService {
   async getOrdersByStatus(status: string): Promise<ShopifyOrder[]> {
     try {
       this.checkConfiguration();
-      const response = await this.client!.get(`/orders.json?financial_status=${status}`);
+      const response = await this.client!.get(
+        `/orders.json?financial_status=${status}`
+      );
       return response.data.orders;
     } catch (error) {
       console.error(`Failed to get orders with status ${status}:`, error);
@@ -220,7 +251,7 @@ export class ShopifyService {
     try {
       this.checkConfiguration();
       await this.client!.put(`/orders/${orderId}.json`, {
-        order: { id: orderId, financial_status: status }
+        order: { id: orderId, financial_status: status },
       });
       return true;
     } catch (error) {
@@ -230,8 +261,8 @@ export class ShopifyService {
   }
 
   private stripHtml(html: string): string {
-    if (!html) return '';
-    return html.replace(/<[^>]*>/g, '').trim();
+    if (!html) return "";
+    return html.replace(/<[^>]*>/g, "").trim();
   }
 
   async testConnection(): Promise<boolean> {
@@ -239,10 +270,10 @@ export class ShopifyService {
       if (!this.isConfigured || !this.client) {
         return false;
       }
-      await this.client.get('/shop.json');
+      await this.client.get("/shop.json");
       return true;
     } catch (error) {
-      console.error('Shopify connection test failed:', error);
+      console.error("Shopify connection test failed:", error);
       return false;
     }
   }

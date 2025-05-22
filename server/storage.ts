@@ -249,7 +249,7 @@ export class MemStorage implements IStorage {
         products.push(created);
       }
     }
-    
+    console.log("products", products.length);
     return products;
   }
 

@@ -430,28 +430,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
 
-  // WebSocket setup for real-time updates
-  const wss = new WebSocketServer({ server: httpServer });
-
-  wss.on('connection', (ws) => {
-    console.log('Client connected to WebSocket');
-
-    ws.on('message', (message) => {
-      try {
-        const data = JSON.parse(message.toString());
-        console.log('Received WebSocket message:', data);
-      } catch (error) {
-        console.error('Invalid WebSocket message:', error);
-      }
+  // WebSocket setup for real-time updates (only in production)
+  if (process.env.NODE_ENV === 'production') {
+    const wss = new WebSocketServer({ 
+      server: httpServer,
+      path: '/ws-api'  // Use specific path to avoid conflicts
     });
 
-    ws.on('close', () => {
-      console.log('Client disconnected from WebSocket');
-    });
+    wss.on('connection', (ws) => {
+      console.log('Client connected to WebSocket');
 
-    // Send initial connection confirmation
-    ws.send(JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() }));
-  });
+      ws.on('message', (message) => {
+        try {
+          const data = JSON.parse(message.toString());
+          console.log('Received WebSocket message:', data);
+        } catch (error) {
+          console.error('Invalid WebSocket message:', error);
+        }
+      });
+
+      ws.on('close', () => {
+        console.log('Client disconnected from WebSocket');
+      });
+
+      ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+      });
+
+      // Send initial connection confirmation
+      ws.send(JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() }));
+    });
+  }
 
   return httpServer;
 }

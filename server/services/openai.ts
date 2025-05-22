@@ -1,7 +1,9 @@
 import OpenAI from "openai";
 import type { Conversation, Message, Product, InsertRecommendation } from "@shared/schema";
-
+import dotenv from "dotenv";
+dotenv.config();
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+console.log("OpenAI API key:", process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "");
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || ""
 });

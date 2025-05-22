@@ -6,9 +6,15 @@ export function useWebSocket() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Skip WebSocket in development to avoid conflicts with Vite
+    if (import.meta.env.DEV) {
+      console.log('WebSocket disabled in development mode');
+      return;
+    }
+
     // Get the WebSocket URL based on current location
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
+    const wsUrl = `${protocol}//${window.location.host}/ws-api`;
 
     const connectWebSocket = () => {
       try {
